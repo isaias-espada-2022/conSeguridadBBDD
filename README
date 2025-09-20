@@ -1,0 +1,4 @@
+Para probar swagger: http://localhost:8080/swagger-ui/index.html
+
+Para generar password, usar la web de BCrypt-Generator: https://bcrypt-generator.com/
+
