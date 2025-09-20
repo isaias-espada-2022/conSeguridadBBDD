@@ -4,19 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
 
+import org.apache.coyote.Response;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.test.annotation.DirtiesContext;
 
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 
 import net.minidev.json.JSONArray;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestDatabase
@@ -26,10 +28,16 @@ public class VerduleriaRestTests {
 	
 	@Test
 	void consultarVerduras() {
-		ResponseEntity<String> response = restTemplate
-				.withBasicAuth("carmen", "lechuguita123")
-				.getForEntity("/verduras", String.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        HttpHeaders headers = loguear();
+
+        ResponseEntity<String> response = restTemplate.exchange("/verduras",
+                HttpMethod.GET, new HttpEntity<>(headers), String.class);
+
+//		ResponseEntity<String> response = restTemplate
+//				.withBasicAuth("carmen", "lechuguita123")
+//				.getForEntity("/verduras", String.class);
+//		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		
         DocumentContext documentContext = JsonPath.parse(response.getBody());
         JSONArray page = documentContext.read("$['content']");
@@ -41,9 +49,15 @@ public class VerduleriaRestTests {
 	
 	@Test
 	void consultarTomateTest() {
-		ResponseEntity<String> response = restTemplate
-				.withBasicAuth("carmen", "lechuguita123")
-				.getForEntity("/verduras/2001", String.class);
+//		ResponseEntity<String> response = restTemplate
+//				.withBasicAuth("carmen", "lechuguita123")
+//              .getForEntity("/verduras/2001", String.class);
+
+        HttpHeaders headers = loguear();
+
+        ResponseEntity<String> response = restTemplate.exchange("/verduras/2001",
+                HttpMethod.GET, new HttpEntity<>(headers), String.class);
+
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -65,10 +79,18 @@ public class VerduleriaRestTests {
 	@Test
 	@DirtiesContext
 	void crearRemolachaTest() {
+
+        HttpHeaders headers = loguear();
 		Verdura remolacha = new Verdura(0, "Remolacha", 4.52, false);
-		ResponseEntity<Verdura> createResponse = restTemplate
-				.withBasicAuth("carmen", "lechuguita123")
-				.postForEntity("/verduras", remolacha, Verdura.class);
+
+        HttpEntity<Verdura> requestEntity = new HttpEntity<>(remolacha, headers);
+        ResponseEntity<Verdura> createResponse = restTemplate.exchange("/verduras",
+                HttpMethod.POST, requestEntity, Verdura.class);
+
+//		ResponseEntity<Verdura> createResponse = restTemplate
+//				.withBasicAuth("carmen", "lechuguita123")
+//				.postForEntity("/verduras", remolacha, Verdura.class);
+
 		// comprobación status respuesta
 		assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
@@ -85,9 +107,12 @@ public class VerduleriaRestTests {
 		assertThat(remolachaCreada.isTroceable()).isFalse();
 
 		// comprobación get by id del objeto creado
-		ResponseEntity<String> getResponse = restTemplate
-				.withBasicAuth("carmen", "lechuguita123")
-				.getForEntity(remolachaLocation, String.class);
+//		ResponseEntity<String> getResponse = restTemplate
+//				.withBasicAuth("carmen", "lechuguita123")
+//				.getForEntity(remolachaLocation, String.class);
+        ResponseEntity<String> getResponse = restTemplate.exchange(remolachaLocation,
+                HttpMethod.GET, new HttpEntity<>(headers), String.class);
+
 		assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
 		DocumentContext documentContext = JsonPath.parse(getResponse.getBody());
@@ -112,4 +137,20 @@ public class VerduleriaRestTests {
 		String idText = path.substring(path.lastIndexOf('/') + 1);
 		return Long.parseLong(idText);
 	}
+
+    private HttpHeaders loguear() {
+        MultiValueMap<String,String> datosUsuario = new LinkedMultiValueMap<>();
+        datosUsuario.set("username", "carmen");
+        datosUsuario.set("password", "lechuguita123");
+        ResponseEntity<String> loginResponse = restTemplate.postForEntity(
+                "/login",
+                new HttpEntity<>(datosUsuario, new HttpHeaders()),
+                String.class);
+        String cookie = loginResponse.getHeaders().get("Set-Cookie").get(0);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Cookie", cookie);
+        return headers;
+
+    }
 }
